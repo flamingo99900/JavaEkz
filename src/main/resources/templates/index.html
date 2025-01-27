@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Генерация случайных чисел</title>
+</head>
+<body>
+
+<h1>Генерация случайных чисел</h1>
+
+<!-- Форма для ввода диапазона чисел -->
+<form action="/generate" method="post">
+    <label for="min">Минимум:</label>
+    <input type="number" id="min" name="min" required><br><br>
+
+    <label for="max">Максимум:</label>
+    <input type="number" id="max" name="max" required><br><br>
+
+    <button type="submit">Сгенерировать</button>
+</form>
+
+<!-- Результаты генерации случайных чисел -->
+<div th:if="${numbers != null}">
+    <h2>Сгенерированные числа:</h2>
+    <p th:text="${numbers}"></p>
+
+    <h3>Среднее арифметическое: <span th:text="${average}"></span></h3>
+</div>
+
+</body>
+</html>
