@@ -1,3 +1,243 @@
+# Руководство по интеграции H2 с Hibernate на языке Java (Maven)
+
+## Содержание
+- [Введение](#введение)
+- [Настройка проекта](#настройка-проекта)
+  - [Добавление зависимостей](#добавление-зависимостей)
+- [Конфигурация Hibernate](#конфигурация-hibernate)
+  - [Файл конфигурации hibernate.cfg.xml](#файл-конфигурации-hibernatecfgxml)
+- [Создание сущностей](#создание-сущностей)
+- [Создание и выполнение запросов](#создание-и-выполнение-запросов)
+  - [Сохранение данных](#сохранение-данных)
+  - [Чтение данных](#чтение-данных)
+  - [Обновление данных](#обновление-данных)
+  - [Удаление данных](#удаление-данных)
+- [Заключение](#заключение)
+
+---
+
+## Введение
+H2 — это встраиваемая реляционная база данных, которая отлично подходит для разработки и тестирования. Hibernate — это фреймворк ORM (Object-Relational Mapping), который упрощает взаимодействие с базами данных в Java. В этом руководстве мы настроим интеграцию H2 с Hibernate и разберем примеры работы с базой данных.
+
+---
+
+## Настройка проекта
+
+### Добавление зависимостей
+Создайте новый проект Maven и добавьте следующие зависимости в файл `pom.xml`:
+
+```xml
+<dependencies>
+    <!-- Hibernate Core -->
+    <dependency>
+        <groupId>org.hibernate</groupId>
+        <artifactId>hibernate-core</artifactId>
+        <version>5.6.15.Final</version>
+    </dependency>
+
+    <!-- H2 Database -->
+    <dependency>
+        <groupId>com.h2database</groupId>
+        <artifactId>h2</artifactId>
+        <version>2.1.214</version>
+    </dependency>
+
+    <!-- JUnit (для тестирования, если нужно) -->
+    <dependency>
+        <groupId>org.junit.jupiter</groupId>
+        <artifactId>junit-jupiter</artifactId>
+        <version>5.8.2</version>
+        <scope>test</scope>
+    </dependency>
+</dependencies>
+```
+
+---
+
+## Конфигурация Hibernate
+
+### Файл конфигурации hibernate.cfg.xml
+Создайте файл `hibernate.cfg.xml` в директории `src/main/resources` со следующей конфигурацией:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-configuration PUBLIC 
+    "-//Hibernate/Hibernate Configuration DTD 3.0//EN" 
+    "http://hibernate.sourceforge.net/hibernate-configuration-3.0.dtd">
+<hibernate-configuration>
+    <session-factory>
+        <!-- JDBC URL для H2 -->
+        <property name="hibernate.connection.url">jdbc:h2:./testdb</property>
+        <property name="hibernate.connection.driver_class">org.h2.Driver</property>
+        <property name="hibernate.connection.username">sa</property>
+        <property name="hibernate.connection.password"></property>
+
+        <!-- Диалект Hibernate -->
+        <property name="hibernate.dialect">org.hibernate.dialect.H2Dialect</property>
+
+        <!-- Автоматическое создание и обновление таблиц -->
+        <property name="hibernate.hbm2ddl.auto">update</property>
+
+        <!-- Форматирование SQL в логах -->
+        <property name="hibernate.show_sql">true</property>
+        <property name="hibernate.format_sql">true</property>
+    </session-factory>
+</hibernate-configuration>
+```
+
+---
+
+## Создание сущностей
+Создайте Java-класс, который будет представлять сущность. Например, сущность `User`:
+
+```java
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "users")
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "name", nullable = false)
+    private String name;
+
+    @Column(name = "email", unique = true, nullable = false)
+    private String email;
+
+    // Конструкторы, геттеры и сеттеры
+    public User() {}
+
+    public User(String name, String email) {
+        this.name = name;
+        this.email = email;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+}
+```
+
+---
+
+## Создание и выполнение запросов
+
+### Сохранение данных
+Пример сохранения нового пользователя:
+
+```java
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.cfg.Configuration;
+
+public class Main {
+    public static void main(String[] args) {
+        SessionFactory factory = new Configuration().configure("hibernate.cfg.xml").addAnnotatedClass(User.class).buildSessionFactory();
+        
+        Session session = factory.getCurrentSession();
+        try {
+            // Создание объекта User
+            User newUser = new User("John Doe", "john.doe@example.com");
+
+            // Начало транзакции
+            session.beginTransaction();
+
+            // Сохранение объекта
+            session.save(newUser);
+
+            // Завершение транзакции
+            session.getTransaction().commit();
+        } finally {
+            factory.close();
+        }
+    }
+}
+```
+
+### Чтение данных
+Пример получения пользователя по ID:
+
+```java
+session.beginTransaction();
+User user = session.get(User.class, 1L);
+session.getTransaction().commit();
+System.out.println(user.getName() + " - " + user.getEmail());
+```
+
+### Обновление данных
+Пример обновления имени пользователя:
+
+```java
+session.beginTransaction();
+User user = session.get(User.class, 1L);
+user.setName("Jane Doe");
+session.getTransaction().commit();
+```
+
+### Удаление данных
+Пример удаления пользователя:
+
+```java
+session.beginTransaction();
+User user = session.get(User.class, 1L);
+if (user != null) {
+    session.delete(user);
+}
+session.getTransaction().commit();
+```
+
+---
+
+## Заключение
+Вы успешно настроили интеграцию Hibernate с H2 и создали основные операции для работы с базой данных. H2 идеально подходит для тестирования и разработки, а Hibernate упрощает работу с базами данных. Используйте этот шаблон для быстрого старта ваших проектов.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Java зима 2025    
 
 Сидит русский в кафе к нему официант подходит:    
@@ -5,7 +245,8 @@
 — Да, как вы узнали?    
 — А в начале анекдота написано.
 
-
+https://docs.google.com/document/d/1b47ur7CZEbgdkzH5rp1nAK_ZwNwZwbAYafKuWzYJI2M     
+    
 Задачи    
      
 Условие: «Реализовать программу для выполнения следующих математических операций с целочисленным, байтовым и вещественным типами данных: сложение, вычитание, умножение, деление, деление по модулю (остаток), модуль числа, возведение в степень. Все данные вводятся с клавиатуры (класс Scanner, System.in, nextint).» По данному условию необходимо реализовать программу с интерактивным консольным меню, (т.е. вывод списка действий по цифрам. При этом при нажатии на цифру у нас должно выполняться определенное действие). При этом в программе данные пункты должны называться следующим образом:     
